@@ -17,6 +17,7 @@ router.post('/login', async (req, res) => {
     try {
         const { email, password } = req.body;
 
+        // Validation des champs requis
         if (!email || !password) {
             return res.status(400).json({
                 success: false,
@@ -37,6 +38,18 @@ router.post('/login', async (req, res) => {
             return res.status(403).json({
                 success: false,
                 message: 'Compte désactivé. Contactez l\'administrateur.'
+            });
+        }
+
+        // Vérifier si le mot de passe est hashé (commence par $2a$ ou $2b$)
+        const isPasswordHashed = user.password && (user.password.startsWith('$2a$') || user.password.startsWith('$2b$'));
+        
+        if (!isPasswordHashed) {
+            console.warn(`[ATTENTION] ATTENTION: Le mot de passe de l'utilisateur ${email} n'est pas hashe!`);
+            console.warn('   Utilisez le script fix-admin.js pour réparer le mot de passe.');
+            return res.status(401).json({
+                success: false,
+                message: 'Le mot de passe doit être réinitialisé. Contactez l\'administrateur.'
             });
         }
 
@@ -64,9 +77,10 @@ router.post('/login', async (req, res) => {
             }
         });
     } catch (error) {
+        console.error('Erreur lors de la connexion:', error);
         res.status(500).json({
             success: false,
-            message: error.message
+            message: error.message || 'Erreur serveur lors de la connexion'
         });
     }
 });
@@ -75,6 +89,31 @@ router.post('/login', async (req, res) => {
 router.post('/register-admin', async (req, res) => {
     try {
         const { username, email, password } = req.body;
+
+        // Validation des champs requis
+        if (!username || !email || !password) {
+            return res.status(400).json({
+                success: false,
+                message: 'Tous les champs sont requis (username, email, password)'
+            });
+        }
+
+        // Validation de l'email
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+            return res.status(400).json({
+                success: false,
+                message: 'Format d\'email invalide'
+            });
+        }
+
+        // Validation du mot de passe
+        if (password.length < 6) {
+            return res.status(400).json({
+                success: false,
+                message: 'Le mot de passe doit contenir au moins 6 caractères'
+            });
+        }
 
         // Vérifier s'il existe déjà un admin
         const adminExists = await User.findOne({ role: 'admin' });
@@ -85,11 +124,21 @@ router.post('/register-admin', async (req, res) => {
             });
         }
 
-        const userExists = await User.findOne({ email });
-        if (userExists) {
+        // Vérifier si l'email existe déjà
+        const userExistsByEmail = await User.findOne({ email });
+        if (userExistsByEmail) {
             return res.status(400).json({
                 success: false,
                 message: 'Email déjà utilisé'
+            });
+        }
+
+        // Vérifier si le username existe déjà
+        const userExistsByUsername = await User.findOne({ username });
+        if (userExistsByUsername) {
+            return res.status(400).json({
+                success: false,
+                message: 'Nom d\'utilisateur déjà utilisé'
             });
         }
 
@@ -115,9 +164,19 @@ router.post('/register-admin', async (req, res) => {
             }
         });
     } catch (error) {
+        // Gestion des erreurs MongoDB
+        if (error.code === 11000) {
+            const field = Object.keys(error.keyPattern)[0];
+            return res.status(400).json({
+                success: false,
+                message: `${field === 'email' ? 'Email' : 'Nom d\'utilisateur'} déjà utilisé`
+            });
+        }
+
+        console.error('Erreur lors de l\'inscription admin:', error);
         res.status(500).json({
             success: false,
-            message: error.message
+            message: error.message || 'Erreur serveur lors de l\'inscription'
         });
     }
 });

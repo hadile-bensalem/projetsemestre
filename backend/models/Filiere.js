@@ -16,7 +16,7 @@ const filiereSchema = new mongoose.Schema({
         type: String
     },
     duration: {
-        type: Number, // Durée en années
+        type: Number, 
         required: true
     },
     coordinator: {

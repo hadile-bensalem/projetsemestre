@@ -2,12 +2,13 @@ const mongoose = require("mongoose");
 
 const connectDB = async () => {
     try {
-        
-        await mongoose.connect(process.env.MONGO_URI);
-        console.log(" Connexion ressi");
+        const mongoURI = process.env.MONGO_URI || 'mongodb://localhost:27017/projetsemestre';
+        await mongoose.connect(mongoURI);
+        console.log("[OK] Connexion reussie a MongoDB");
     } catch (err) {
-        console.error("erreur de connexion", err.message);
-        process.exit(1);
+        console.error("[ERREUR] Erreur de connexion MongoDB:", err.message);
+        console.error("[ATTENTION] Le serveur continue mais les operations de base de donnees echoueront");
+        // Ne pas arrêter le serveur pour voir les autres erreurs
     }
 };
 

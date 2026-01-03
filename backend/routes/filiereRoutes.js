@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const Filiere = require('../models/Filiere');
-const { protect, admin } = require('../middleware/authMiddleware');
+const { protect, admin, teacher } = require('../middleware/authMiddleware');
 
 // Créer une filière (ADMIN uniquement)
 router.post('/', protect, admin, async (req, res) => {
@@ -43,10 +43,17 @@ router.post('/', protect, admin, async (req, res) => {
     }
 });
 
-// Lire toutes les filières (ADMIN uniquement)
-router.get('/', protect, admin, async (req, res) => {
+// Lire toutes les filières (ADMIN et TEACHER)
+router.get('/', protect, teacher, async (req, res) => {
     try {
-        const filieres = await Filiere.find()
+        const { isActive } = req.query;
+        let filter = {};
+        
+        if (isActive !== undefined) {
+            filter.isActive = isActive === 'true';
+        }
+
+        const filieres = await Filiere.find(filter)
             .populate('coordinator', 'username email teacherInfo')
             .sort({ name: 1 });
 
@@ -63,8 +70,8 @@ router.get('/', protect, admin, async (req, res) => {
     }
 });
 
-// Lire une filière par ID (ADMIN uniquement)
-router.get('/:id', protect, admin, async (req, res) => {
+// Lire une filière par ID (ADMIN et TEACHER)
+router.get('/:id', protect, teacher, async (req, res) => {
     try {
         const filiere = await Filiere.findById(req.params.id)
             .populate('coordinator', 'username email teacherInfo');
